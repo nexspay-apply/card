@@ -1,5 +1,12 @@
-# Netlify config. Static site: no build step; "public" folder is published.
-# Security headers live in public/_headers (works for Git deploy, CLI and drag-and-drop).
 [build]
-  publish = "public"
-  command = ""
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA routing: /apply, /admin etc. all load index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

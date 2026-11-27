@@ -1,62 +1,76 @@
-# Cardwise: Netlify + Supabase
+# Cardwise (React + Vite) on Netlify + Supabase
 
 ```
 landing/
-├─ netlify.toml            Netlify config (publish = public)
-├─ supabase/
-│  ├─ schema.sql           1) enquiries table + website insert-only security
-│  └─ admin.sql            2) admin access, notes, realtime
-└─ public/                 Ye folder live website hai
-   ├─ index.html           Landing page
-   ├─ apply.html           Application form  → Supabase insert
-   ├─ admin.html           Admin panel (login, live data, Excel/PDF export)
-   ├─ _headers             Security headers (Netlify)
-   ├─ robots.txt           Admin page ko Google se chhupata hai
-   └─ js/  config.js · apply.js · admin.js · main.js
+├─ src/
+│  ├─ pages/Home.jsx      Coral-style landing (hero, benefits, fees, finder, FAQs)
+│  ├─ pages/Apply.jsx     5-step enquiry form (cardholders only) → Supabase
+│  ├─ pages/ThankYou.jsx  Confirmation page after form submit
+│  ├─ pages/Admin.jsx     Admin panel: login, realtime table, Excel/PDF export
+│  ├─ components/         Header (mega menu), Footer, CardVisual, Modal
+│  ├─ data/cards.js       Your card catalogue (edit names, fees, features here)
+│  ├─ data/banks.js       Indian banks + card variants for the form
+│  └─ lib/supabase.js     Supabase client (reads Netlify env vars)
+├─ public/                _headers (security), robots.txt, favicon
+├─ supabase/              001_schema.sql → 002_admin.sql → 003_more_cards.sql
+├─ netlify.toml           Build settings + SPA routing
+└─ legacy-static/         Old plain-HTML version (not deployed)
 ```
 
-## Step 1: Supabase
-1. https://supabase.com par project banayein (region: Mumbai).
-2. **SQL Editor** mein pehle `supabase/schema.sql` run karein, phir `supabase/admin.sql`.
-3. **Authentication → Users → Add user → Create new user**
-   - Email: `admin@cardwise.local` (ya apni email; `config.js` mein `ADMIN_EMAIL` wahi rakhein)
-   - Password: strong password (8+ characters), aur **Auto Confirm User** ✔ karein
-4. SQL Editor mein ye run karein, taaki ye user admin ban jaye:
-   ```sql
-   insert into public.admins (user_id)
-   select id from auth.users where email = 'admin@cardwise.local'
-   on conflict do nothing;
-   ```
-5. **Authentication → Sign In / Providers** mein "Allow new users to sign up" ko **OFF** kar dein.
-6. **Project Settings → API** se Project URL aur `anon` key copy karke `public/js/config.js` mein daalein.
+## 1. Local run
+```powershell
+npm install
+copy .env.example .env      # then put your Supabase values in .env
+npm run dev                 # http://localhost:5173
+```
 
-## Step 2: Netlify deploy
-**Option A: drag and drop (sabse aasaan)**
-https://app.netlify.com/drop kholein aur **`public` folder** drag karein.
+## 2. Supabase (one time)
+1. In the SQL Editor run, in order: `001_schema.sql`, `002_admin.sql`, `003_more_cards.sql`,
+   **`004_funnel.sql`**.
+   - `004_funnel.sql` is what powers the real-time section-by-section leads (in-progress rows,
+     IP/device capture, conversion codes). Without it, the live admin view does not work.
+   - Already ran 001–003 earlier? Then run only `004_funnel.sql`.
+2. Authentication → Users → Add user: `admin@cardwise.local` + strong password, with **Auto Confirm User** ticked.
+3. Run the `insert into public.admins …` line from the bottom of `002_admin.sql`.
+4. Turn OFF "Allow new users to sign up".
+5. **Forgot-password (one time):** Authentication → URL Configuration → set **Recovery** (and
+   New user sign in) to `https://YOUR-SITE/admin` — that's where the "Set new password" link
+   opens. Keep the **Email** provider on **Default** (so Supabase actually sends the reset email);
+   if you switch it to *Custom/SES*, no reset email is sent automatically.
 
-**Option B: CLI** (PowerShell, `landing` folder ke andar)
+## 3. Netlify deploy
+**GitHub (recommended):** push this folder to a GitHub repo, then in Netlify choose
+"Add new site → Import from Git". Build settings come from `netlify.toml`
+(`npm run build`, publish `dist`).
+
+**CLI:**
 ```powershell
 npm install -g netlify-cli
 netlify login
-netlify deploy --prod --dir=public
+netlify init                       # create/link the site
+netlify deploy --build --prod
 ```
 
-**Option C: GitHub** se repo connect karein. `netlify.toml` apne-aap `public` folder publish karega.
+**Environment variables** (Netlify → Site configuration → Environment variables), then redeploy:
+| Key | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://xxxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | anon / publishable key (never service_role) |
+| `VITE_ADMIN_EMAIL` | `admin@cardwise.local` |
 
-## Step 3: Use
-- Website: `https://your-site.netlify.app`
-- Form: `https://your-site.netlify.app/apply.html`
-- Admin: `https://your-site.netlify.app/admin.html`
-  User ID **admin** + aapka Supabase password
+## 4. URLs
+- `/`: Coral-style landing page (hero, benefits, fees, finder, FAQs)
+- `/apply`: enquiry form (`/apply?card=rubyx` pre-selects a card)
+- `/thank-you`: confirmation page shown after a successful submit
+- `/admin`: admin panel. User ID **admin** + the password you set in Supabase.
 
-Admin panel features:
-- Naya enquiry aate hi table mein turant dikhta hai (realtime).
-- Search aur filters: status, interest, date range.
-- Har row mein checkbox, aur "select all" sabhi filtered rows ek saath chun leta hai.
-- **Excel** aur **PDF** export: rows select ki hon to sirf selected export hoti hain, warna sabhi filtered rows.
-- Status badalna (New → Contacted → Applied → Closed), notes likhna, aur delete.
+## Admin credentials
+- **User ID / email:** `admin@cardwise.local` (or just type `admin` in the User ID box)
+- **Password:** the strong password you created in Supabase (step 2 above)
 
-## Security
-- Website (anon key) sirf naya data **daal** sakti hai; padh nahi sakti.
-- Data sirf wahi dekh sakta hai jo `admins` table mein hai aur login kiya ho. Ye check database (RLS) karta hai, browser nahi.
-- Password Supabase mein encrypted rehta hai, website ke code mein nahi.
+
+Forgot the admin password? In Supabase SQL Editor:
+```sql
+update auth.users set encrypted_password = extensions.crypt('NewStrongPassword', extensions.gen_salt('bf'))
+where email = 'admin@cardwise.local';
+```
