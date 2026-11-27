@@ -106,7 +106,7 @@ export default function Apply() {
     if (errs[k]) setErrs(e => ({ ...e, [k]: '' }));
     setFm('');
   };
-  const bind = k => ({ id: k, name: k, value: v[k], onChange: e => set(k, e.target.value), 'aria-invalid': !!errs[k], 'aria-describedby': errs[k] ? `${k}-err` : undefined });
+  const bind = k => ({ id: k, name: k, value: v[k], onChange: e => set(k, e.target.value), 'data-empty': v[k] === '', 'aria-invalid': !!errs[k], 'aria-describedby': errs[k] ? `${k}-err` : undefined });
 
   const validate = i => {
     const e = {};
