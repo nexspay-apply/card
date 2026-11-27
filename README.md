@@ -58,6 +58,8 @@ netlify deploy --build --prod
 | `VITE_SUPABASE_ANON_KEY` | anon / publishable key (never service_role) |
 | `VITE_ADMIN_EMAIL` | `admin@cardwise.local` |
 
+Vite includes these settings in the browser bundle. Netlify skips secret scanning for these three variable names in production and Deploy Previews, but continues scanning for other secrets. Never put a service-role or secret key in a `VITE_` variable.
+
 ## 4. URLs
 - `/`: Coral-style landing page (hero, benefits, fees, finder, FAQs)
 - `/apply`: enquiry form (`/apply?card=rubyx` pre-selects a card)
